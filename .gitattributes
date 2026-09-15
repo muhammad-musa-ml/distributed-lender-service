@@ -1,0 +1,13 @@
+# Everything in this repo is built and run inside Linux containers or WSL, so LF is the
+# only correct line ending in a working copy -- not just in the stored blob.
+#
+# Without this, Git for Windows checks these out as CRLF, and a shell script with CRLF
+# fails inside a container with an error that names a line number rather than the cause:
+#   ./e2e.sh: line 2: $'\r': command not found
+# The same applies to the Dockerfiles' RUN lines.
+* text=auto eol=lf
+
+# Binary, never touched.
+*.gz  binary
+*.png binary
+*.pdf binary

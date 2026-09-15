@@ -1,0 +1,33 @@
+# Build output
+bin/
+build/
+*.o
+*.a
+*.so
+
+# Generated protobuf / gRPC stubs. CMake regenerates these from lender.proto on every
+# build; committing them would mean two sources of truth for the wire format.
+*.pb.cc
+*.pb.h
+*_pb2.py
+*_pb2_grpc.py
+
+# The synthetic MySQL fixture. ~3.4 MB and fully regenerable:
+#   python3 lender-service/server/scripts/gen_dataset.py
+# The generator is committed. Its output is not.
+hdma-wi-2021.sql.gz
+hdma-wi-2021.sql
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

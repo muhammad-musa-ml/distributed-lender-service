@@ -1,0 +1,88 @@
+# Runtime image for the C++ Lender gRPC server.
+#
+# Two stages. The first compiles against the ~1.5 GB toolchain in lender-cpp-builder; the
+# second carries only the shared libraries the binary actually loads. The build stage's
+# headers, compilers, protoc and static archives are not shipped.
+#
+# The runtime package names below were READ off the builder image with dpkg -S against the
+# actual .so files the binary links, not guessed from the -dev names -- on Ubuntu 24.04
+# several of them carry a `t64` suffix (the 64-bit-time_t transition) that is not derivable
+# from the development package name.
+#
+#   # build the toolchain image once:
+#   docker build -f Dockerfile.builder -t lender-cpp-builder .
+#   # then, from the lender-service/ directory (the proto must be in the context):
+#   docker build -f server/Dockerfile.server -t ${PROJECT}-server .
+
+# ---------------------------------------------------------------------------------------
+# Stage 1 -- compile
+# ---------------------------------------------------------------------------------------
+FROM lender-cpp-builder AS build
+
+WORKDIR /src
+# The build context is lender-service/, so the proto and the sources are both reachable and the
+# proto stays the single copy the Python client also speaks.
+COPY lender.proto /src/lender.proto
+COPY server/CMakeLists.txt /src/server/CMakeLists.txt
+COPY server/src /src/server/src
+COPY server/tests /src/server/tests
+
+RUN cmake -S /src/server -B /build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DLENDER_PROTO=/src/lender.proto \
+    && cmake --build /build -j"$(nproc)"
+
+# Run the unit suite as a BUILD step. A server image that cannot pass its own tests should
+# not be producible at all, and finding that out at `docker build` time is much cheaper than
+# finding it out from a misbehaving container.
+RUN /build/lender_tests
+
+# ---------------------------------------------------------------------------------------
+# Stage 2 -- runtime
+# ---------------------------------------------------------------------------------------
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Arrow's runtime libraries are not in Ubuntu's archive either, so the apt source is needed
+# here for the same reason it is needed in the builder. Same ordering constraint applies:
+# gnupg and a populated index before the .deb.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates gnupg wget \
+    && wget -q -O /tmp/apache-arrow-apt-source.deb \
+        "https://packages.apache.org/artifactory/arrow/ubuntu/apache-arrow-apt-source-latest-noble.deb" \
+    && apt-get install -y --no-install-recommends /tmp/apache-arrow-apt-source.deb \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libarrow2500 \
+        libparquet2500 \
+        libgrpc++1.51t64 \
+        libprotobuf32t64 \
+        libmysqlclient21 \
+        libcurl4t64 \
+    && apt-get purge -y wget gnupg \
+    && apt-get autoremove -y \
+    && rm -f /tmp/apache-arrow-apt-source.deb \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /build/lender_server /usr/local/bin/lender_server
+# The client ships alongside the server: it is ~100 KB, it shares the already-compiled
+# stubs, and having it inside the image means the running topology can be exercised with
+# `docker compose exec server lender_client ...` and no extra image at all.
+COPY --from=build /build/lender_client /usr/local/bin/lender_client
+
+# Not root. The server reads MySQL and talks HTTP to the NameNode; nothing it does needs
+# privilege, and a container that never needs root should not run as it.
+RUN useradd --system --create-home --shell /usr/sbin/nologin lender
+USER lender
+
+# Every one of these is overridable from compose; see src/config.hpp.
+ENV LENDER_LISTEN_ADDR=0.0.0.0:5000 \
+    MYSQL_HOST=mysql \
+    HDFS_HOST=boss \
+    WEBHDFS_PORT=9870
+
+EXPOSE 5000
+
+# Exec form, so the server is PID 1 and receives SIGTERM directly from `docker compose down`
+# -- main.cpp installs a handler that drains in-flight RPCs rather than dropping them.
+CMD ["/usr/local/bin/lender_server"]
