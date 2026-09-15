@@ -13,25 +13,6 @@ low-level and distributed work.
 
 Both build and run. Neither is a toy that only compiles.
 
-## Why these exist
-
-I kept writing "C/C++" and "distributed systems" on a resume and then having nothing to
-point at. Coursework doesn't count for much — nobody can see it, and I can't link to it.
-So I picked the two things I'd actually be asked about in an interview and built them,
-with the rule that I don't get to claim anything I haven't run.
-
-That rule turned out to matter. In `low-latency-ipc/` I wrote a comment asserting that
-Nagle's algorithm hurts request/response latency, measured it, and found no difference at
-all (45.73 µs vs 46.54 µs p50). The effect is real but needs a write-write-read pattern,
-which I then built a flag to isolate — and got a 973x difference that reproduces to within
-a microsecond across three runs. The corrected version is in the README there, including
-the wrong first draft, because the correction is the interesting part.
-
-In `lender-service/` the same rule caught a bad test. I'd written assertions pinning that
-an average "rounds down", they passed, and a mutation run showed they'd also pass against a
-round-to-nearest implementation. My test data averaged 20.33, which floors *and* rounds to
-20. Fixed by adding a case where the two disagree.
-
 ## Where to start
 
 If you only want to look at one thing, read
