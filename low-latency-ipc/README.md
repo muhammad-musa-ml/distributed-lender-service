@@ -72,7 +72,8 @@ sizeof(unpadded) = 8208 B   sizeof(padded) = 8320 B
 ```
 
 I nearly wrote "3.82x faster" in this README and stopped, because one run isn't a
-measurement. Nine runs at identical parameters:
+measurement. Nine runs, five of them (3.26x, 2.24x, 3.12x, 1.69x and 2.97x) on the first
+version of the benchmark, before I added thread pinning:
 
 | | ns/item |
 |---|---|

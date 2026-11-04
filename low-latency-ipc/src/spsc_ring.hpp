@@ -2,11 +2,13 @@
 //
 // WHY THIS EXISTS
 // ---------------
-// The server hands completed request buffers from the I/O thread (producer) to a worker
-// thread (consumer) without a mutex. A mutex here is not slow because locking costs much
-// in the uncontended case -- it is slow because a CONTENDED futex parks the thread, and a
-// parked thread costs microseconds, not nanoseconds. That shows up in p99.9 and nowhere
-// else, which is exactly the percentile this project exists to talk about.
+// The ring is a building block for handing buffers from an I/O thread (producer) to a
+// worker thread (consumer) without a mutex. The server in this folder runs one event loop
+// and does not use it; only bench_ring.cpp and test_ring.cpp do. A mutex in such a handoff
+// is not slow because locking costs much in the uncontended case -- it is slow because a
+// CONTENDED futex parks the thread, and a parked thread costs microseconds, not
+// nanoseconds. That would show up in p99.9 and nowhere else, which is exactly the
+// percentile this project exists to talk about.
 //
 // THE CORRECTNESS ARGUMENT, stated because "lock-free" is easy to claim and hard to justify:
 //
