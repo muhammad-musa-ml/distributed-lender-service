@@ -7,7 +7,7 @@ a place where every performance claim I make has a command next to it that repro
 and because I wanted to find out which of the things I "knew" about low-latency networking
 would survive being measured. One of them didn't.
 
-No dependencies. `g++` and a 30-line Makefile.
+No dependencies. `g++` and a Makefile.
 
 ```
 make            # build everything into bin/
@@ -37,7 +37,7 @@ To drive the server by hand, run it in one shell and the harness in another:
 
 ```bash
 ./bin/server --port=9099 --nodelay=1
-./bin/bench_client --port=9099 --nodelay=1 --requests=50000
+./bin/bench_client --port=9099 --nodelay=1 --iters=50000
 ```
 
 `--split-send=1` on the client is the flag that matters; see Result 2.

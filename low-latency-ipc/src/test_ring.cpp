@@ -132,8 +132,8 @@ void test_concurrent_sequence(std::uint64_t n) {
 int main(int argc, char** argv) {
     // n is settable because ThreadSanitizer runs 20-50x slower than -O2. The sanitizer
     // build uses a smaller n: TSan detects a mis-ordered acquire/release from the
-    // happens-before graph, not by brute force, so a few hundred thousand items through
-    // a 1024-slot ring already exercises every wraparound edge many times over. The
+    // happens-before graph, not by brute force, so the 20,000 items the Makefile's tsan
+    // target runs through a 1024-slot ring exercise every wraparound edge about 19 times. The
     // large n in the plain build is there to shake out timing-dependent loss instead.
     std::uint64_t n = 5'000'000;
     if (argc > 1) {
